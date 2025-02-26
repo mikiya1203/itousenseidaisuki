@@ -1,5 +1,4 @@
 import streamlit as st
 st.write("まあくんかわいい")
-a = 0
-if a == 0
-    st.write("a")
+st.write("進研模試一位")
+    
