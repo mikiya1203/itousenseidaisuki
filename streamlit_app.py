@@ -1,6 +1,5 @@
 import streamlit as st
 import time
-import datetime
 
 # ポモドーロタイマーの設定
 POMODORO_DURATION = 25 * 60  # 25分
@@ -30,15 +29,14 @@ if st.button("タイマー開始"):
         st.info("長い休憩タイマーが開始されました。15分間休憩しましょう！")
     
     # タイマーのカウントダウン
+    progress_bar = st.progress(0)  # 進捗バーを作成
     end_time = time.time() + duration
     while time.time() < end_time:
         remaining_time = int(end_time - time.time())
         minutes, seconds = divmod(remaining_time, 60)
+        progress_bar.progress((time.time() - (end_time - duration)) / duration)  # 進捗の更新
         st.text(f"残り時間: {minutes:02d}:{seconds:02d}")
-        time.sleep(1)
-        st.experimental_rerun()  # 修正箇所
-        # st.rerun()に変更したい場合は以下のように修正：
-        # st.rerun()
+        time.sleep(1)  # 1秒ごとに進捗更新
     
     st.success(f"{timer_type}が完了しました！")
 
