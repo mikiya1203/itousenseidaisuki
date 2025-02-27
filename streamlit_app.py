@@ -1,13 +1,40 @@
 import streamlit as st
 import time
+import json
+import os
 
 # ポモドーロタイマーの設定
 POMODORO_DURATION = 25 * 60  # 25分
 BREAK_DURATION = 5 * 60  # 5分
 LONG_BREAK_DURATION = 15 * 60  # 15分
 
+# 学習進捗を保存するファイルのパス
+data_file = "learning_progress.json"
+
+# 学習データをロードする関数
+def load_learning_data():
+    if os.path.exists(data_file):
+        with open(data_file, "r") as file:
+            return json.load(file)
+    else:
+        return {}
+
+# 学習データを保存する関数
+def save_learning_data(data):
+    with open(data_file, "w") as file:
+        json.dump(data, file)
+
 # 学習進捗の設定
-learning_progress = {}
+learning_progress = load_learning_data()
+
+# ポモドーロサイクルのカウント
+pomodoro_cycles = learning_progress.get("pomodoro_cycles", 0)
+
+# 音声通知を再生する関数
+def play_notification_sound():
+    sound_file = 'notification_sound.mp3'  # 音声ファイルのパス
+    audio_data = open(sound_file, 'rb').read()  # 音声データを読み込む
+    st.audio(audio_data, format="audio/mp3")  # 音声を再生
 
 # ページのタイトル
 st.title("ポモドーロタイマーと学習管理")
@@ -21,6 +48,8 @@ if st.button("タイマー開始"):
     if timer_type == "ポモドーロ":
         duration = POMODORO_DURATION
         st.info("ポモドーロタイマーが開始されました。25分間集中しましょう！")
+        pomodoro_cycles += 1  # ポモドーロサイクル数を増加
+        save_learning_data({"pomodoro_cycles": pomodoro_cycles})  # サイクル数を保存
     elif timer_type == "短い休憩":
         duration = BREAK_DURATION
         st.info("短い休憩タイマーが開始されました。5分間休憩しましょう！")
@@ -39,6 +68,7 @@ if st.button("タイマー開始"):
         time.sleep(1)  # 1秒ごとに進捗更新
     
     st.success(f"{timer_type}が完了しました！")
+    play_notification_sound()  # タイマー終了時に音を鳴らす
 
 # 学習管理セクション
 st.header("学習管理")
@@ -55,12 +85,17 @@ if subject:
     if st.button("学習時間を追加"):
         learning_progress[subject]["total_time"] += study_time
         learning_progress[subject]["sessions"] += 1
+        save_learning_data(learning_progress)  # 学習データを保存
         st.success(f"{study_time}分の学習時間が記録されました！")
 
 # 学習進捗の表示
 st.header("学習進捗")
 if learning_progress:
     for subject, data in learning_progress.items():
-        total_time = data["total_time"]
-        sessions = data["sessions"]
-        st.write(f"{subject}: {total_time}分 (セッション数: {sessions})")
+        if subject != "pomodoro_cycles":  # ポモドーロサイクルは除外
+            total_time = data["total_time"]
+            sessions = data["sessions"]
+            st.write(f"{subject}: {total_time}分 (セッション数: {sessions})")
+
+# 完了したポモドーロサイクル数を表示
+st.write(f"完了したポモドーロサイクル数: {pomodoro_cycles}")
