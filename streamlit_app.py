@@ -79,19 +79,22 @@ if st.button("タイマー開始"):
 
 # 学習管理セクション
 st.header("学習管理")
-subject = st.text_input("学習する科目またはトピック")
+
+# 学習する科目の選択肢
+subjects = ["数学", "英語", "プログラミング", "歴史", "科学", "哲学", "心理学"]
+selected_subject = st.selectbox("学習する科目を選択", subjects)
 
 # 学習進捗を記録する
-if subject:
-    if subject not in learning_progress:
-        learning_progress[subject] = {"total_time": 0, "sessions": 0}
+if selected_subject:
+    if selected_subject not in learning_progress:
+        learning_progress[selected_subject] = {"total_time": 0, "sessions": 0}
 
-    study_time = st.number_input(f"{subject}の学習時間 (分)", min_value=0, step=1)
+    study_time = st.number_input(f"{selected_subject}の学習時間 (分)", min_value=0, step=1)
 
     # 学習時間を記録するボタン
     if st.button("学習時間を追加"):
-        learning_progress[subject]["total_time"] += study_time
-        learning_progress[subject]["sessions"] += 1
+        learning_progress[selected_subject]["total_time"] += study_time
+        learning_progress[selected_subject]["sessions"] += 1
         save_learning_data(learning_progress)  # 学習データを保存
         st.success(f"{study_time}分の学習時間が記録されました！")
 
