@@ -87,13 +87,11 @@ subjects = ["数学", "英語", "プログラミング", "歴史", "科学", "�
 selected_subject = st.selectbox("学習する科目を選択", subjects)
 
 # 学習進捗を記録する
-# 学習進捗を記録する
 if selected_subject:
+    # 学習進捗内に "dates" キーがない場合、初期化
     if selected_subject not in learning_progress:
         learning_progress[selected_subject] = {"total_time": 0, "sessions": 0, "dates": []}
-    
-    # `dates` キーが存在しない場合は初期化
-    if "dates" not in learning_progress[selected_subject]:
+    elif "dates" not in learning_progress[selected_subject]:
         learning_progress[selected_subject]["dates"] = []
 
     study_time = st.number_input(f"{selected_subject}の学習時間 (分)", min_value=0, step=1)
@@ -112,7 +110,6 @@ if selected_subject:
 
         save_learning_data(learning_progress)  # 学習データを保存
         st.success(f"{study_time}分の学習時間が記録されました！")
-
 
 # 学習進捗の表示
 st.header("学習進捗")
