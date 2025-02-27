@@ -106,7 +106,7 @@ if st.button("タイマー開始"):
 st.header("学習管理")
 
 # 学習する科目の選択肢
-subjects = ["数学", "英語", "プログラミング", "歴史", "科学", "哲学", "心理学"]
+subjects = ["数学", "英語", "国語", "物理", "生物", "プログラミング"]
 selected_subject = st.selectbox("学習する科目を選択", subjects)
 
 # 学習進捗を記録する
