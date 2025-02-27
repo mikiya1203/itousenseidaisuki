@@ -41,7 +41,7 @@ def save_user(username, password):
         """, (username, hashed_password))
         conn.commit()
     except sqlite3.IntegrityError:
-        st.error("このユーザー名は既に使用されています。")
+        st.error("このユーザー名は既に使用されています")
     conn.close()
 
 # ユーザーの認証を行う関数
