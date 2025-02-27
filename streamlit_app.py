@@ -36,9 +36,34 @@ if st.button("タイマー開始"):
         minutes, seconds = divmod(remaining_time, 60)
         st.text(f"残り時間: {minutes:02d}:{seconds:02d}")
         time.sleep(1)
-        st.experimental_rerun()
+        st.experimental_rerun()  # 修正箇所
+        # st.rerun()に変更したい場合は以下のように修正：
+        # st.rerun()
     
     st.success(f"{timer_type}が完了しました！")
 
+# 学習管理セクション
+st.header("学習管理")
+subject = st.text_input("学習する科目またはトピック")
 
-    
+# 学習進捗を記録する
+if subject:
+    if subject not in learning_progress:
+        learning_progress[subject] = {"total_time": 0, "sessions": 0}
+
+    study_time = st.number_input(f"{subject}の学習時間 (分)", min_value=0, step=1)
+
+    # 学習時間を記録するボタン
+    if st.button("学習時間を追加"):
+        learning_progress[subject]["total_time"] += study_time
+        learning_progress[subject]["sessions"] += 1
+        st.success(f"{study_time}分の学習時間が記録されました！")
+
+# 学習進捗の表示
+st.header("学習進捗")
+if learning_progress:
+    for subject, data in learning_progress.items():
+        total_time = data["total_time"]
+        sessions = data["sessions"]
+        st.write(f"{subject}: {total_time}分 (セッション数: {sessions})")
+
