@@ -64,4 +64,3 @@ if learning_progress:
         total_time = data["total_time"]
         sessions = data["sessions"]
         st.write(f"{subject}: {total_time}分 (セッション数: {sessions})")
-
