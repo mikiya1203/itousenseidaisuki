@@ -69,8 +69,8 @@ if st.button("タイマー開始"):
         minutes, seconds = divmod(remaining_time, 60)
         progress_bar.progress((time.time() - (end_time - duration)) / duration)  # 進捗の更新
         
-        # 残り時間の表示をリセットして更新
-        timer_display.text(f"残り時間: {minutes:02d}:{seconds:02d}")
+        # 残り時間を大きなフォントで表示
+        timer_display.markdown(f"<h1 style='font-size: 72px; text-align: center;'>残り時間: {minutes:02d}:{seconds:02d}</h1>", unsafe_allow_html=True)
         
         time.sleep(1)  # 1秒ごとに進捗更新
     
