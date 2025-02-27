@@ -60,11 +60,18 @@ if st.button("タイマー開始"):
     # タイマーのカウントダウン
     progress_bar = st.progress(0)  # 進捗バーを作成
     end_time = time.time() + duration
+    
+    # タイマーの進行をリセットして、表示を毎回更新
+    timer_display = st.empty()  # タイマーの残り時間を表示するための空のコンテナ
+
     while time.time() < end_time:
         remaining_time = int(end_time - time.time())
         minutes, seconds = divmod(remaining_time, 60)
         progress_bar.progress((time.time() - (end_time - duration)) / duration)  # 進捗の更新
-        st.text(f"残り時間: {minutes:02d}:{seconds:02d}")
+        
+        # 残り時間の表示をリセットして更新
+        timer_display.text(f"残り時間: {minutes:02d}:{seconds:02d}")
+        
         time.sleep(1)  # 1秒ごとに進捗更新
     
     st.success(f"{timer_type}が完了しました！")
