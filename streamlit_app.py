@@ -1,42 +1,67 @@
 import streamlit as st
 import time
-import json
-import os
-import pandas as pd
+import sqlite3
 from datetime import datetime
+import pandas as pd
 
 # ポモドーロタイマーの設定
 POMODORO_DURATION = 25 * 60  # 25分
 BREAK_DURATION = 5 * 60  # 5分
 LONG_BREAK_DURATION = 15 * 60  # 15分
 
-# 学習進捗を保存するファイルのパス
-data_file = "learning_progress.json"
+# SQLite データベースファイルのパス
+DB_NAME = "learning_progress.db"
 
-# 学習データをロードする関数
-def load_learning_data():
-    if os.path.exists(data_file):
-        with open(data_file, "r") as file:
-            return json.load(file)
-    else:
-        return {}
+# SQLite データベースに接続する関数
+def connect_db():
+    conn = sqlite3.connect(DB_NAME)
+    return conn
 
-# 学習データを保存する関数
-def save_learning_data(data):
-    with open(data_file, "w") as file:
-        json.dump(data, file)
+# 学習進捗テーブルを作成する関数
+def create_table():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS progress (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject TEXT,
+            date TEXT,
+            day_of_week TEXT,
+            study_time INTEGER
+        )
+    """)
+    conn.commit()
+    conn.close()
 
-# 学習進捗の設定
-learning_progress = load_learning_data()
+# 学習データをデータベースに保存する関数
+def save_learning_data(subject, study_time):
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    # 現在の日付と曜日を取得
+    now = datetime.now()
+    date_str = now.strftime("%Y-%m-%d")
+    day_of_week = now.strftime("%A")
+
+    # データベースに保存
+    cursor.execute("""
+        INSERT INTO progress (subject, date, day_of_week, study_time)
+        VALUES (?, ?, ?, ?)
+    """, (subject, date_str, day_of_week, study_time))
+    conn.commit()
+    conn.close()
+
+# 学習データをデータベースから取得する関数
+def get_learning_data():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM progress")
+    data = cursor.fetchall()
+    conn.close()
+    return data
 
 # ポモドーロサイクルのカウント
-pomodoro_cycles = learning_progress.get("pomodoro_cycles", 0)
-
-# 音声通知を再生する関数
-def play_notification_sound():
-    sound_file = 'notification_sound.mp3'  # 音声ファイルのパス
-    audio_data = open(sound_file, 'rb').read()  # 音声データを読み込む
-    st.audio(audio_data, format="audio/mp3")  # 音声を再生
+pomodoro_cycles = 0
 
 # ページのタイトル
 st.title("ポモドーロタイマーと学習管理")
@@ -51,7 +76,6 @@ if st.button("タイマー開始"):
         duration = POMODORO_DURATION
         st.info("ポモドーロタイマーが開始されました。25分間集中しましょう！")
         pomodoro_cycles += 1  # ポモドーロサイクル数を増加
-        save_learning_data({"pomodoro_cycles": pomodoro_cycles})  # サイクル数を保存
     elif timer_type == "短い休憩":
         duration = BREAK_DURATION
         st.info("短い休憩タイマーが開始されました。5分間休憩しましょう！")
@@ -77,58 +101,36 @@ if st.button("タイマー開始"):
         time.sleep(1)  # 1秒ごとに進捗更新
     
     st.success(f"{timer_type}が完了しました！")
-    play_notification_sound()  # タイマー終了時に音を鳴らす
 
 # 学習管理セクション
 st.header("学習管理")
 
 # 学習する科目の選択肢
-subjects = ["数学", "英語", "プログラミング", "歴史", "物理", "生物", "国語"]
+subjects = ["数学", "英語", "プログラミング", "歴史", "科学", "哲学", "心理学"]
 selected_subject = st.selectbox("学習する科目を選択", subjects)
 
 # 学習進捗を記録する
 if selected_subject:
-    # 学習進捗内に "dates" キーがない場合、初期化
-    if selected_subject not in learning_progress:
-        learning_progress[selected_subject] = {"total_time": 0, "sessions": 0, "dates": []}
-    elif "dates" not in learning_progress[selected_subject]:
-        learning_progress[selected_subject]["dates"] = []
-
     study_time = st.number_input(f"{selected_subject}の学習時間 (分)", min_value=0, step=1)
 
     # 学習時間を記録するボタン
     if st.button("学習時間を追加"):
-        # 現在の日付と曜日を取得
-        now = datetime.now()
-        date_str = now.strftime("%Y-%m-%d")
-        day_of_week = now.strftime("%A")  # 曜日を取得
-
-        # 学習時間と日時を記録
-        learning_progress[selected_subject]["total_time"] += study_time
-        learning_progress[selected_subject]["sessions"] += 1
-        learning_progress[selected_subject]["dates"].append({"date": date_str, "day": day_of_week, "time": study_time})
-
-        save_learning_data(learning_progress)  # 学習データを保存
+        # データベースに学習時間を保存
+        save_learning_data(selected_subject, study_time)
         st.success(f"{study_time}分の学習時間が記録されました！")
 
 # 学習進捗の表示
 st.header("学習進捗")
 
 # 学習時間の表を作成
-if learning_progress:
-    data = []
-    for subject, data_in_subject in learning_progress.items():
-        if subject != "pomodoro_cycles":  # ポモドーロサイクルは除外
-            total_time = data_in_subject["total_time"]
-            sessions = data_in_subject["sessions"]
-            
-            # 学習日時と曜日の情報を追加
-            for date_info in data_in_subject["dates"]:
-                data.append([subject, date_info["date"], date_info["day"], date_info["time"]])
+data = get_learning_data()
 
-    # DataFrameに変換して表示
-    df = pd.DataFrame(data, columns=["科目", "学習日", "曜日", "学習時間 (分)"])
-    st.table(df)  # 学習進捗を表形式で表示
+# 表を作成
+df = pd.DataFrame(data, columns=["ID", "科目", "学習日", "曜日", "学習時間 (分)"])
+st.table(df)  # 学習進捗を表形式で表示
 
 # 完了したポモドーロサイクル数を表示
 st.write(f"完了したポモドーロサイクル数: {pomodoro_cycles}")
+
+# 初回実行時にテーブルを作成
+create_table()
