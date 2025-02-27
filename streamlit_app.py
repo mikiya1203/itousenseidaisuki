@@ -2,6 +2,7 @@ import streamlit as st
 import time
 import json
 import os
+import pandas as pd
 
 # ポモドーロタイマーの設定
 POMODORO_DURATION = 25 * 60  # 25分
@@ -81,7 +82,7 @@ if st.button("タイマー開始"):
 st.header("学習管理")
 
 # 学習する科目の選択肢
-subjects = ["数学", "英語", "プログラミング", "歴史", "物理", "生物", "国語"]
+subjects = ["数学", "英語", "プログラミング", "歴史", "科学", "哲学", "心理学"]
 selected_subject = st.selectbox("学習する科目を選択", subjects)
 
 # 学習進捗を記録する
@@ -100,12 +101,19 @@ if selected_subject:
 
 # 学習進捗の表示
 st.header("学習進捗")
+
+# 学習時間の表を作成
 if learning_progress:
-    for subject, data in learning_progress.items():
+    data = []
+    for subject, data_in_subject in learning_progress.items():
         if subject != "pomodoro_cycles":  # ポモドーロサイクルは除外
-            total_time = data["total_time"]
-            sessions = data["sessions"]
-            st.write(f"{subject}: {total_time}分 (セッション数: {sessions})")
+            total_time = data_in_subject["total_time"]
+            sessions = data_in_subject["sessions"]
+            data.append([subject, total_time, sessions])
+    
+    # DataFrameに変換して表示
+    df = pd.DataFrame(data, columns=["科目", "学習時間 (分)", "セッション数"])
+    st.table(df)  # 学習進捗を表形式で表示
 
 # 完了したポモドーロサイクル数を表示
 st.write(f"完了したポモドーロサイクル数: {pomodoro_cycles}")
