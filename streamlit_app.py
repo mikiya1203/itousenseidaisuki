@@ -3,6 +3,7 @@ import time
 import json
 import os
 import pandas as pd
+from datetime import datetime
 
 # ポモドーロタイマーの設定
 POMODORO_DURATION = 25 * 60  # 25分
@@ -88,14 +89,22 @@ selected_subject = st.selectbox("学習する科目を選択", subjects)
 # 学習進捗を記録する
 if selected_subject:
     if selected_subject not in learning_progress:
-        learning_progress[selected_subject] = {"total_time": 0, "sessions": 0}
+        learning_progress[selected_subject] = {"total_time": 0, "sessions": 0, "dates": []}
 
     study_time = st.number_input(f"{selected_subject}の学習時間 (分)", min_value=0, step=1)
 
     # 学習時間を記録するボタン
     if st.button("学習時間を追加"):
+        # 現在の日付と曜日を取得
+        now = datetime.now()
+        date_str = now.strftime("%Y-%m-%d")
+        day_of_week = now.strftime("%A")  # 曜日を取得
+
+        # 学習時間と日時を記録
         learning_progress[selected_subject]["total_time"] += study_time
         learning_progress[selected_subject]["sessions"] += 1
+        learning_progress[selected_subject]["dates"].append({"date": date_str, "day": day_of_week, "time": study_time})
+
         save_learning_data(learning_progress)  # 学習データを保存
         st.success(f"{study_time}分の学習時間が記録されました！")
 
@@ -109,10 +118,13 @@ if learning_progress:
         if subject != "pomodoro_cycles":  # ポモドーロサイクルは除外
             total_time = data_in_subject["total_time"]
             sessions = data_in_subject["sessions"]
-            data.append([subject, total_time, sessions])
-    
+            
+            # 学習日時と曜日の情報を追加
+            for date_info in data_in_subject["dates"]:
+                data.append([subject, date_info["date"], date_info["day"], date_info["time"]])
+
     # DataFrameに変換して表示
-    df = pd.DataFrame(data, columns=["科目", "学習時間 (分)", "セッション数"])
+    df = pd.DataFrame(data, columns=["科目", "学習日", "曜日", "学習時間 (分)"])
     st.table(df)  # 学習進捗を表形式で表示
 
 # 完了したポモドーロサイクル数を表示
