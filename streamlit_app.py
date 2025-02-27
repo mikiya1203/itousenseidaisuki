@@ -66,6 +66,9 @@ pomodoro_cycles = 0
 # ページのタイトル
 st.title("ポモドーロタイマーと学習管理")
 
+# 初回実行時にテーブルを作成
+create_table()
+
 # タイマーのセクション
 st.header("ポモドーロタイマー")
 timer_type = st.selectbox("タイマーの選択", ["ポモドーロ", "短い休憩", "長い休憩"])
@@ -131,6 +134,3 @@ st.table(df)  # 学習進捗を表形式で表示
 
 # 完了したポモドーロサイクル数を表示
 st.write(f"完了したポモドーロサイクル数: {pomodoro_cycles}")
-
-# 初回実行時にテーブルを作成
-create_table()
