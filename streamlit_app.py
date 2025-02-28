@@ -142,13 +142,21 @@ auth_choice = st.sidebar.radio("ログインまたは登録", ("ログイン", "
 # `username` を None で初期化
 username = None
 
-if auth_choice == "ログイン":
+# ログインまたは登録フォームの処理
+if auth_choice == "ログイン" and username is None:
     username = login_form()
-elif auth_choice == "新規登録":
+elif auth_choice == "新規登録" and username is None:
     register_form()
 
-# ログインが成功した場合、学習進捗を管理する
+# ログイン後、ログインフォームを非表示にする
 if username:
+    st.session_state.username = username  # セッションに保存しておく
+    st.sidebar.empty()  # サイドバーのログインフォームを消去
+    st.empty()  # メインエリアのログインフォームを消去
+
+# ログインが成功した場合、学習進捗を管理する
+if 'username' in st.session_state:
+    username = st.session_state.username
     # タイマーの設定と学習管理セクション
     POMODORO_DURATION = 25 * 60  # 25分
     BREAK_DURATION = 5 * 60  # 5分
