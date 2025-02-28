@@ -5,14 +5,57 @@ from passlib.hash import bcrypt
 from datetime import datetime
 import pandas as pd
 
-# SQLite データベースのパス
+# SQLite データベースのぱす
 DB_NAME = "learning_progress.db"
 
 # SQLite データベースに接続する関数
 def connect_db():
-    return sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_NAME)
+    return conn
 
-# 学習進捗テーブルを作成
+# ユーザー情報のテーブルを作成する関数
+def create_user_table():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# ユーザー情報をデータベースに保存する関数
+def save_user(username, password):
+    conn = connect_db()
+    cursor = conn.cursor()
+    hashed_password = bcrypt.hash(password)
+    try:
+        cursor.execute("""
+            INSERT INTO users (username, password)
+            VALUES (?, ?)
+        """, (username, hashed_password))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        st.error("このユーザー名は既に使用されています")
+    conn.close()
+
+# ユーザーの認証を行う関数
+def authenticate_user(username, password):
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+    user = cursor.fetchone()
+    conn.close()
+    if user:
+        stored_password = user[2]
+        if bcrypt.verify(password, stored_password):
+            return True
+    return False
+
+# 学習進捗テーブルを作成する関数
 def create_table():
     conn = connect_db()
     cursor = conn.cursor()
@@ -28,7 +71,7 @@ def create_table():
     conn.commit()
     conn.close()
 
-# 学習データを保存
+# 学習データをデータベースに保存する関数
 def save_learning_data(subject, study_time):
     conn = connect_db()
     cursor = conn.cursor()
@@ -36,81 +79,76 @@ def save_learning_data(subject, study_time):
     date_str = now.strftime("%Y-%m-%d")
     day_of_week = now.strftime("%A")
     
-    cursor.execute("""
-        INSERT INTO progress (subject, date, day_of_week, study_time)
-        VALUES (?, ?, ?, ?)
-    """, (subject, date_str, day_of_week, study_time))
+    # 既存のデータをチェックし、同じ日・科目があれば更新
+    cursor.execute("SELECT study_time FROM progress WHERE subject = ? AND date = ?", (subject, date_str))
+    existing = cursor.fetchone()
+    if existing:
+        new_study_time = existing[0] + study_time
+        cursor.execute("UPDATE progress SET study_time = ? WHERE subject = ? AND date = ?", (new_study_time, subject, date_str))
+    else:
+        cursor.execute("""
+            INSERT INTO progress (subject, date, day_of_week, study_time)
+            VALUES (?, ?, ?, ?)
+        """, (subject, date_str, day_of_week, study_time))
+    
     conn.commit()
     conn.close()
 
-# 学習データを取得
+# 学習データをデータベースから取得する関数
 def get_learning_data():
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM progress")
+    cursor.execute("SELECT subject, date, day_of_week, study_time FROM progress ORDER BY date DESC")
+    data = cursor.fetchall()
+    conn.close()
+    return data
+
+# 日ごとの合計学習時間を取得する関数
+def get_daily_totals():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT date, SUM(study_time) FROM progress GROUP BY date ORDER BY date DESC")
     data = cursor.fetchall()
     conn.close()
     return data
 
 # ページのタイトル
-st.title("📚 学習管理＆ポモドーロタイマー")
-
-# テーブルを作成
+st.title("学習管理アプリ")
 create_table()
+create_user_table()
 
-# **🔹 タイマーと学習管理を並行して実行**
-col1, col2 = st.columns(2)  # 画面を2分割
+auth_choice = st.sidebar.radio("ログインまたは登録", ("ログイン", "新規登録"))
+username = None
+if auth_choice == "ログイン":
+    username = st.text_input("ユーザー名")
+    password = st.text_input("パスワード", type="password")
+    if st.button("ログイン") and authenticate_user(username, password):
+        st.session_state.username = username
+elif auth_choice == "新規登録":
+    new_username = st.text_input("新規ユーザー名")
+    new_password = st.text_input("新規パスワード", type="password")
+    if st.button("登録") and new_username and new_password:
+        save_user(new_username, new_password)
+        st.success("ユーザー登録が完了しました！")
 
-# **📌 タイマー機能（左側）**
-with col1:
-    st.header("⏳ タイマー")
-    
-    POMODORO_DURATION = 25 * 60  # 25分
-    BREAK_DURATION = 5 * 60  # 5分
-    LONG_BREAK_DURATION = 15 * 60  # 15分
-    
-    timer_type = st.selectbox("タイマーを選択", ["ポモドーロ", "短い休憩", "長い休憩"])
-    timer_button = st.button("⏰ タイマー開始")
-    
-    if timer_button:
-        if timer_type == "ポモドーロ":
-            duration = POMODORO_DURATION
-            st.info("🔥 25分間集中しましょう！")
-        elif timer_type == "短い休憩":
-            duration = BREAK_DURATION
-            st.info("☕ 5分間休憩しましょう！")
-        else:
-            duration = LONG_BREAK_DURATION
-            st.info("🌿 15分間リラックスしましょう！")
-        
-        progress_bar = st.progress(0)
-        time_display = st.empty()
-        start_time = time.time()
-        end_time = start_time + duration
-        
-        while time.time() < end_time:
-            remaining_time = int(end_time - time.time())
-            minutes, seconds = divmod(remaining_time, 60)
-            progress_bar.progress((time.time() - start_time) / duration)
-            time_display.text(f"⏳ 残り時間: {minutes:02d}:{seconds:02d}")
-            time.sleep(1)
-
-        time_display.text(f"✅ {timer_type}が完了しました！")
-
-# **📌 学習管理（右側）**
-with col2:
-    st.header("📖 学習管理")
-
+if 'username' in st.session_state:
+    username = st.session_state.username
+    st.subheader("学習管理")
     subjects = ["数学", "英語", "国語", "物理", "生物", "情報"]
     selected_subject = st.selectbox("学習する科目を選択", subjects)
     study_time = st.number_input(f"{selected_subject}の学習時間 (分)", min_value=0, step=1)
-    
-    if st.button("📝 学習時間を追加"):
+    if st.button("学習時間を追加"):
         save_learning_data(selected_subject, study_time)
-        st.success(f"✅ {study_time}分の学習時間を記録しました！")
+        st.success(f"{study_time}分の学習時間が記録されました！")
 
-    # 学習進捗の表示
+    # 📊 学習進捗の表示（見やすく）
     st.subheader("📊 学習進捗")
     data = get_learning_data()
-    df = pd.DataFrame(data, columns=["ID", "科目", "学習日", "曜日", "学習時間 (分)"])
+    df = pd.DataFrame(data, columns=["科目", "学習日", "曜日", "学習時間 (分)"])
     st.table(df)
+    
+    # 📅 日ごとの合計学習時間の表示
+    st.subheader("📅 日ごとの合計学習時間")
+    daily_data = get_daily_totals()
+    daily_df = pd.DataFrame(daily_data, columns=["学習日", "合計学習時間 (分)"])
+    st.table(daily_df)
