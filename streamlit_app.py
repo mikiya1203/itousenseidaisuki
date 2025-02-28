@@ -139,6 +139,9 @@ def register_form():
 # ログイン画面または登録画面を選択
 auth_choice = st.sidebar.radio("ログインまたは登録", ("ログイン", "新規登録"))
 
+# `username` を None で初期化
+username = None
+
 if auth_choice == "ログイン":
     username = login_form()
 elif auth_choice == "新規登録":
