@@ -1,4 +1,4 @@
-import time  # timeモジュールをインポート
+import time
 import streamlit as st
 import sqlite3
 import bcrypt
@@ -116,10 +116,9 @@ def login_form():
     if st.button("ログイン"):
         if authenticate_user(username, password):
             st.success(f"{username}さん、ようこそ！")
-            return username
+            st.session_state.username = username
         else:
             st.error("ユーザー名またはパスワードが間違っています。")
-    return None
 
 # ユーザー登録フォーム
 def register_form():
@@ -137,12 +136,14 @@ def register_form():
 auth_choice = st.sidebar.radio("ログインまたは登録", ("ログイン", "新規登録"))
 
 if auth_choice == "ログイン":
-    username = login_form()
+    login_form()
 elif auth_choice == "新規登録":
     register_form()
 
 # ログインが成功した場合、学習進捗を管理する
-if username:
+if "username" in st.session_state:
+    username = st.session_state.username
+    
     # タイマーの設定と学習管理セクション
     POMODORO_DURATION = 25 * 60  # 25分
     BREAK_DURATION = 5 * 60  # 5分
