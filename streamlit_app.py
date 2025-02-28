@@ -176,7 +176,7 @@ if username:
 
     # 学習管理セクション
     st.header("学習管理")
-    subjects = ["数学", "英語", "国語", "物理", "生物", "プログラミング"]
+    subjects = ["数学", "英語", "国語", "物理", "生物", "情報"]
     selected_subject = st.selectbox("学習する科目を選択", subjects)
     
     study_time = st.number_input(f"{selected_subject}の学習時間 (分)", min_value=0, step=1)
