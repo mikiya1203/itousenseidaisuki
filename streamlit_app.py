@@ -121,7 +121,7 @@ def login_form():
             st.success(f"{username}さん、ようこそ！")
             return username
         else:
-            st.error("ユーザー名またはパスワードが間違っています。")
+            st.error("ユーザー名またはパスワードが間違っています！")
     return None
 
 # ユーザー登録フォーム
@@ -178,16 +178,17 @@ if 'username' in st.session_state:
         
         # タイマーのカウントダウン
         progress_bar = st.progress(0)  # 進捗バーを作成
+        time_display = st.empty()  # 残り時間の表示用プレースホルダー
         end_time = time.time() + duration
         
         while time.time() < end_time:
             remaining_time = int(end_time - time.time())
             minutes, seconds = divmod(remaining_time, 60)
             progress_bar.progress((time.time() - (end_time - duration)) / duration)  # 進捗の更新
-            st.text(f"残り時間: {minutes:02d}:{seconds:02d}")
+            time_display.text(f"残り時間: {minutes:02d}:{seconds:02d}")  # 残り時間を更新
             time.sleep(1)  # 1秒ごとに進捗更新
         
-        st.success(f"{timer_type}が完了しました！")
+        time_display.text(f"{timer_type}が完了しました！")  # タイマー終了後のメッセージ
 
     # 学習管理セクション
     st.header("学習管理")
@@ -197,7 +198,6 @@ if 'username' in st.session_state:
     study_time = st.number_input(f"{selected_subject}の学習時間 (分)", min_value=0, step=1)
     
     if st.button("学習時間を追加"):
-        # データベースに学習時間を保存
         save_learning_data(selected_subject, study_time)
         st.success(f"{study_time}分の学習時間が記録されました！")
 
