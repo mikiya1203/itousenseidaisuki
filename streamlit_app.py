@@ -5,7 +5,7 @@ from passlib.hash import bcrypt
 from datetime import datetime
 import pandas as pd
 
-# SQLite データベースのぱす
+# SQLite データベースのパス
 DB_NAME = "learning_progress.db"
 
 # SQLite データベースに接続する関数
@@ -62,17 +62,19 @@ def create_table():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS progress (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
             subject TEXT,
             date TEXT,
             day_of_week TEXT,
-            study_time INTEGER
+            study_time INTEGER,
+            FOREIGN KEY (username) REFERENCES users (username)
         )
     """)
     conn.commit()
     conn.close()
 
 # 学習データをデータベースに保存する関数
-def save_learning_data(subject, study_time):
+def save_learning_data(username, subject, study_time):
     conn = connect_db()
     cursor = conn.cursor()
     now = datetime.now()
@@ -80,34 +82,34 @@ def save_learning_data(subject, study_time):
     day_of_week = now.strftime("%A")
     
     # 既存のデータをチェックし、同じ日・科目があれば更新
-    cursor.execute("SELECT study_time FROM progress WHERE subject = ? AND date = ?", (subject, date_str))
+    cursor.execute("SELECT study_time FROM progress WHERE username = ? AND subject = ? AND date = ?", (username, subject, date_str))
     existing = cursor.fetchone()
     if existing:
         new_study_time = existing[0] + study_time
-        cursor.execute("UPDATE progress SET study_time = ? WHERE subject = ? AND date = ?", (new_study_time, subject, date_str))
+        cursor.execute("UPDATE progress SET study_time = ? WHERE username = ? AND subject = ? AND date = ?", (new_study_time, username, subject, date_str))
     else:
         cursor.execute("""
-            INSERT INTO progress (subject, date, day_of_week, study_time)
-            VALUES (?, ?, ?, ?)
-        """, (subject, date_str, day_of_week, study_time))
+            INSERT INTO progress (username, subject, date, day_of_week, study_time)
+            VALUES (?, ?, ?, ?, ?)
+        """, (username, subject, date_str, day_of_week, study_time))
     
     conn.commit()
     conn.close()
 
 # 学習データをデータベースから取得する関数
-def get_learning_data():
+def get_learning_data(username):
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT subject, date, day_of_week, study_time FROM progress ORDER BY date DESC")
+    cursor.execute("SELECT subject, date, day_of_week, study_time FROM progress WHERE username = ? ORDER BY date DESC", (username,))
     data = cursor.fetchall()
     conn.close()
     return data
 
 # 日ごとの合計学習時間を取得する関数
-def get_daily_totals():
+def get_daily_totals(username):
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT date, SUM(study_time) FROM progress GROUP BY date ORDER BY date DESC")
+    cursor.execute("SELECT date, SUM(study_time) FROM progress WHERE username = ? GROUP BY date ORDER BY date DESC", (username,))
     data = cursor.fetchall()
     conn.close()
     return data
@@ -138,17 +140,17 @@ if 'username' in st.session_state:
     selected_subject = st.selectbox("学習する科目を選択", subjects)
     study_time = st.number_input(f"{selected_subject}の学習時間 (分)", min_value=0, step=1)
     if st.button("学習時間を追加"):
-        save_learning_data(selected_subject, study_time)
+        save_learning_data(username, selected_subject, study_time)
         st.success(f"{study_time}分の学習時間が記録されました！")
 
     # 📊 学習進捗の表示（見やすく）
     st.subheader("📊 学習進捗")
-    data = get_learning_data()
+    data = get_learning_data(username)
     df = pd.DataFrame(data, columns=["科目", "学習日", "曜日", "学習時間 (分)"])
     st.table(df)
     
     # 📅 日ごとの合計学習時間の表示
     st.subheader("📅 日ごとの合計学習時間")
-    daily_data = get_daily_totals()
+    daily_data = get_daily_totals(username)
     daily_df = pd.DataFrame(daily_data, columns=["学習日", "合計学習時間 (分)"])
     st.table(daily_df)
