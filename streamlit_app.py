@@ -193,5 +193,5 @@ if username:
     # 学習進捗の表示
     st.header("学習進捗")
     data = get_learning_data()
-    df = pd.DataFrame(data, columns=["ID", "教科", "学習日", "曜日", "学習時間 (分)"])
+    df = pd.DataFrame(data, columns=["ID", "", "学習日", "曜日", "学習時間 (分)"])
     st.table(df)
