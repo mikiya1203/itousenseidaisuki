@@ -131,7 +131,7 @@ def register_form():
             save_user(username, password)
             st.success("ユーザー登録が完了しました！")
         else:
-            st.error("ユーザー名とパスワードを入力してください。")
+            st.error("ユーザー名とパスワードを入力してください！")
 
 # ログイン画面または登録画面を選択
 auth_choice = st.sidebar.radio("ログインまたは登録", ("ログイン", "新規登録"))
