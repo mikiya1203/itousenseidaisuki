@@ -10,56 +10,9 @@ DB_NAME = "learning_progress.db"
 
 # SQLite データベースに接続する関数
 def connect_db():
-    conn = sqlite3.connect(DB_NAME)
-    return conn
+    return sqlite3.connect(DB_NAME)
 
-# ユーザー情報のテーブルを作成する関数
-def create_user_table():
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-# ユーザー情報をデータベースに保存する関数
-def save_user(username, password):
-    conn = connect_db()
-    cursor = conn.cursor()
-    
-    # パスワードをハッシュ化
-    hashed_password = bcrypt.hash(password)
-    
-    try:
-        cursor.execute("""
-            INSERT INTO users (username, password)
-            VALUES (?, ?)
-        """, (username, hashed_password))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        st.error("このユーザー名は既に使用されています")
-    conn.close()
-
-# ユーザーの認証を行う関数
-def authenticate_user(username, password):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
-    user = cursor.fetchone()
-    conn.close()
-
-    if user:
-        stored_password = user[2]  # パスワードはハッシュ化されている
-        if bcrypt.verify(password, stored_password):
-            return True
-    return False
-
-# 学習進捗テーブルを作成する関数
+# 学習進捗テーブルを作成
 def create_table():
     conn = connect_db()
     cursor = conn.cursor()
@@ -75,17 +28,14 @@ def create_table():
     conn.commit()
     conn.close()
 
-# 学習データをデータベースに保存する関数
+# 学習データを保存
 def save_learning_data(subject, study_time):
     conn = connect_db()
     cursor = conn.cursor()
-
-    # 現在の日付と曜日を取得
     now = datetime.now()
     date_str = now.strftime("%Y-%m-%d")
     day_of_week = now.strftime("%A")
-
-    # データベースに保存
+    
     cursor.execute("""
         INSERT INTO progress (subject, date, day_of_week, study_time)
         VALUES (?, ?, ?, ?)
@@ -93,7 +43,7 @@ def save_learning_data(subject, study_time):
     conn.commit()
     conn.close()
 
-# 学習データをデータベースから取得する関数
+# 学習データを取得
 def get_learning_data():
     conn = connect_db()
     cursor = conn.cursor()
@@ -103,106 +53,64 @@ def get_learning_data():
     return data
 
 # ページのタイトル
-st.title("学習管理アプリ")
+st.title("📚 学習管理＆ポモドーロタイマー")
 
-# 学習進捗テーブルを作成
+# テーブルを作成
 create_table()
 
-# ユーザー登録とログインのセクション
-create_user_table()  # 初回実行時にユーザー情報テーブルを作成
+# **🔹 タイマーと学習管理を並行して実行**
+col1, col2 = st.columns(2)  # 画面を2分割
 
-# ログインフォーム
-def login_form():
-    st.header("ログイン")
-    username = st.text_input("ユーザー名")
-    password = st.text_input("パスワード", type="password")
-    if st.button("ログイン"):
-        if authenticate_user(username, password):
-            st.success(f"{username}さん、ようこそ！")
-            return username
-        else:
-            st.error("ユーザー名またはパスワードが間違っています！")
-    return None
-
-# ユーザー登録フォーム
-def register_form():
-    st.header("ユーザー登録")
-    username = st.text_input("新規ユーザー名")
-    password = st.text_input("新規パスワード", type="password")
-    if st.button("登録"):
-        if username and password:
-            save_user(username, password)
-            st.success("ユーザー登録が完了しました！")
-        else:
-            st.error("ユーザー名とパスワードを入力してください！")
-
-# ログイン画面または登録画面を選択
-auth_choice = st.sidebar.radio("ログインまたは登録", ("ログイン", "新規登録"))
-
-# `username` を None で初期化
-username = None
-
-# ログインまたは登録フォームの処理
-if auth_choice == "ログイン" and username is None:
-    username = login_form()
-elif auth_choice == "新規登録" and username is None:
-    register_form()
-
-# ログイン後、ログインフォームを非表示にする
-if username:
-    st.session_state.username = username  # セッションに保存しておく
-    st.sidebar.empty()  # サイドバーのログインフォームを消去
-    st.empty()  # メインエリアのログインフォームを消去
-
-# ログインが成功した場合、学習進捗を管理する
-if 'username' in st.session_state:
-    username = st.session_state.username
-    # タイマーの設定と学習管理セクション
+# **📌 タイマー機能（左側）**
+with col1:
+    st.header("⏳ タイマー")
+    
     POMODORO_DURATION = 25 * 60  # 25分
     BREAK_DURATION = 5 * 60  # 5分
     LONG_BREAK_DURATION = 15 * 60  # 15分
-
-    # タイマー開始ボタン
-    timer_type = st.selectbox("タイマーの選択", ["ポモドーロ", "短い休憩", "長い休憩"])
-
-    if st.button("タイマー開始"):
+    
+    timer_type = st.selectbox("タイマーを選択", ["ポモドーロ", "短い休憩", "長い休憩"])
+    timer_button = st.button("⏰ タイマー開始")
+    
+    if timer_button:
         if timer_type == "ポモドーロ":
             duration = POMODORO_DURATION
-            st.info("ポモドーロタイマーが開始されました。25分間集中しましょう！")
+            st.info("🔥 25分間集中しましょう！")
         elif timer_type == "短い休憩":
             duration = BREAK_DURATION
-            st.info("短い休憩タイマーが開始されました。5分間休憩しましょう！")
-        elif timer_type == "長い休憩":
+            st.info("☕ 5分間休憩しましょう！")
+        else:
             duration = LONG_BREAK_DURATION
-            st.info("長い休憩タイマーが開始されました。15分間休憩しましょう！")
+            st.info("🌿 15分間リラックスしましょう！")
         
-        # タイマーのカウントダウン
-        progress_bar = st.progress(0)  # 進捗バーを作成
-        time_display = st.empty()  # 残り時間の表示用プレースホルダー
-        end_time = time.time() + duration
+        progress_bar = st.progress(0)
+        time_display = st.empty()
+        start_time = time.time()
+        end_time = start_time + duration
         
         while time.time() < end_time:
             remaining_time = int(end_time - time.time())
             minutes, seconds = divmod(remaining_time, 60)
-            progress_bar.progress((time.time() - (end_time - duration)) / duration)  # 進捗の更新
-            time_display.text(f"残り時間: {minutes:02d}:{seconds:02d}")  # 残り時間を更新
-            time.sleep(1)  # 1秒ごとに進捗更新
-        
-        time_display.text(f"{timer_type}が完了しました！")  # タイマー終了後のメッセージ
+            progress_bar.progress((time.time() - start_time) / duration)
+            time_display.text(f"⏳ 残り時間: {minutes:02d}:{seconds:02d}")
+            time.sleep(1)
 
-    # 学習管理セクション
-    st.header("学習管理")
+        time_display.text(f"✅ {timer_type}が完了しました！")
+
+# **📌 学習管理（右側）**
+with col2:
+    st.header("📖 学習管理")
+
     subjects = ["数学", "英語", "国語", "物理", "生物", "情報"]
     selected_subject = st.selectbox("学習する科目を選択", subjects)
-    
     study_time = st.number_input(f"{selected_subject}の学習時間 (分)", min_value=0, step=1)
     
-    if st.button("学習時間を追加"):
+    if st.button("📝 学習時間を追加"):
         save_learning_data(selected_subject, study_time)
-        st.success(f"{study_time}分の学習時間が記録されました！")
+        st.success(f"✅ {study_time}分の学習時間を記録しました！")
 
     # 学習進捗の表示
-    st.header("学習進捗")
+    st.subheader("📊 学習進捗")
     data = get_learning_data()
     df = pd.DataFrame(data, columns=["ID", "科目", "学習日", "曜日", "学習時間 (分)"])
     st.table(df)
